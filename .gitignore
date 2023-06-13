@@ -1,0 +1,9 @@
+.idea/
+.pyinstaller/main/build
+.pyinstaller/main/*.spec
+.pyinstaller/update/build
+.pyinstaller/update/*.spec
+.vscode/
+test.py
+notes.txt
+.test/exdir_backup
