@@ -10,7 +10,7 @@ from packaging import version as pv
 from pathlib import Path
 
 WORKING_DIR = os.getcwd()
-VERSIONFILE_URL = r'https://raw.githubusercontent.com/sammmsational/lista-tools/master/VERSION'
+VERSIONFILE_URL = r'https://raw.githubusercontent.com/stadtarchiv-lindau/lista-tools/master/VERSION'
 
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     # noinspection PyProtectedMember

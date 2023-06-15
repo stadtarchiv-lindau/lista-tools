@@ -6,11 +6,11 @@ import requests
 from pathlib import Path
 
 FILE_DIR = Path(bytes.fromhex(sys.argv[1]).decode())
-url = r'https://github.com/sammmsational/lista-tools/raw/master/.pyinstaller/main/dist/lista-tools.exe'
+BINARY_URL = r'https://github.com/stadtarchiv-lindau/lista-tools/raw/master/.pyinstaller/main/dist/lista-tools.exe'
 
 print(f'[lista-tools]: Downloading new binary')
 with open(FILE_DIR / 'lista-tools.exe.new', 'wb') as downloadfile:
-    r = requests.get(url, stream=True)
+    r = requests.get(BINARY_URL, stream=True)
     total_length = int(r.headers.get('content-length'))
     bytes_done = 0
     for data in r.iter_content(chunk_size=4096):
@@ -34,5 +34,5 @@ try:
     os.remove(FILE_DIR / 'lista-tools.exe.old')
     input(f'[lista-tools]: Update complete. Press Enter to close this window.')
 except Exception:
-    print(f'[lista-tools]: An error has occured when installing. Please either rename the files manually or delete the'
+    print(f'[lista-tools]: An error has occurred when installing. Please either rename the files manually or delete the'
           f'temporary files and restart update.')
