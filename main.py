@@ -10,8 +10,7 @@ from packaging import version as pv
 from pathlib import Path
 
 WORKING_DIR = os.getcwd()
-# VERSIONFILE_URL = r'https://raw.githubusercontent.com/sammmsational/lista-tools/master/VERSION'
-VERSIONFILE_URL = r'http://listatools.kulturlindau.de/VERSION'
+VERSIONFILE_URL = r'https://raw.githubusercontent.com/sammmsational/lista-tools/master/VERSION'
 
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     # noinspection PyProtectedMember
@@ -44,11 +43,12 @@ def get_element_type(path):
 def update():
     """
     Checks if newer version of the program exists
-    :return: installed_version; None if an error occurs
+    :return: (installed_version: packaging.version.Version, installed_version_str: str); None if an error occurs
     """
     try:
         with open(bundle_dir / 'VERSION') as versionfile:
-            installed_version = pv.parse(versionfile.read())
+            installed_version_str = versionfile.read()
+            installed_version = pv.parse(installed_version_str)
     except (FileNotFoundError, pv.InvalidVersion) as error:
         click.echo(f"[lista-tools]: An exception occurred when reading the local config file.")
         click.echo(f"{error}")
@@ -65,7 +65,7 @@ def update():
         available_version = None
 
     if installed_version is None or available_version is None:
-        return installed_version
+        return installed_version, installed_version_str
 
     if installed_version < available_version:
         click.echo(f"[lista-tools]: A newer version is available.")
@@ -77,7 +77,7 @@ def update():
             os.startfile(bundle_dir / 'update.exe', arguments=str(str(FILE_DIR).encode().hex()))
             sys.exit()
 
-    return installed_version
+    return installed_version, installed_version_str
 
 
 @click.group()
@@ -91,10 +91,10 @@ def version():
     Prints the currently installed version.
     """
     click.echo("------------------------------")
-    if version_info is None:  # update_check() returns None if something went wrong
+    if version_info is None:  # update() returns None if something went wrong
         click.echo(f"There was an error loading the local version file.")
     else:
-        click.echo(f"Version: {version_info}")
+        click.echo(f"Version: {version_info[1]}")
     click.echo("------------------------------")
 
 

@@ -6,8 +6,7 @@ import requests
 from pathlib import Path
 
 FILE_DIR = Path(bytes.fromhex(sys.argv[1]).decode())
-# url = r'https://raw.githubusercontent.com/sammmsational/lista-tools/master/.pyinstaller/dist/lista-tools.exe'
-url = r'http://listatools.kulturlindau.de/lista-tools.exe'
+url = r'https://github.com/sammmsational/lista-tools/raw/master/.pyinstaller/main/dist/lista-tools.exe'
 
 print(f'[lista-tools]: Downloading new binary')
 with open(FILE_DIR / 'lista-tools.exe.new', 'wb') as downloadfile:
