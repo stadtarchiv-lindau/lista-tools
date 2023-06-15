@@ -58,7 +58,7 @@ def update():
     # noinspection PyBroadException
     try:
         r = requests.get(VERSIONFILE_URL)
-        available_version_str = r.content.decode()  # decodes bytes object to str
+        available_version_str = r.content.decode().strip()  # decodes bytes object to str
         available_version = pv.parse(available_version_str)
 
     except Exception as E:  # KeyError if ConfigParser tries to read section of .ini that doesn't exist
