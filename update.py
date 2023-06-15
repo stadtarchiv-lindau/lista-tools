@@ -19,6 +19,7 @@ with open(FILE_DIR / 'lista-tools.exe.new', 'wb') as downloadfile:
         done = int(50 * bytes_done / total_length)
         percent = round((100 * bytes_done / total_length), 1)
         print(f"\r[{'═' * done + ' ' * (50 - done)}] {percent}%", end='', flush=True)
+    print("\n")
 
 # noinspection PyBroadException
 try:
