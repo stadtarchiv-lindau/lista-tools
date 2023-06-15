@@ -53,31 +53,34 @@ def update():
         click.echo(f"[lista-tools]: An exception occurred when reading the local config file.")
         click.echo(f"{error}")
         installed_version = None
+        installed_version_str = None
 
     # noinspection PyBroadException
     try:
         r = requests.get(VERSIONFILE_URL)
-        available_version = pv.parse(r.content.decode())  # decodes bytes object to str
+        available_version_str = r.content.decode()  # decodes bytes object to str
+        available_version = pv.parse(available_version_str)
 
     except Exception as E:  # KeyError if ConfigParser tries to read section of .ini that doesn't exist
-        click.echo(f"[lista-tools]: An Error occured when fetching the newest version. ")
+        click.echo(f"[lista-tools]: An Error occurred when fetching the newest version. ")
         click.echo(f"{E}")
         available_version = None
+        available_version_str = None
 
     if installed_version is None or available_version is None:
-        return installed_version, installed_version_str
+        return installed_version, installed_version_str, available_version, available_version_str
 
     if installed_version < available_version:
         click.echo(f"[lista-tools]: A newer version is available.")
-        click.echo(f"[lista-tools]: Installed version: {installed_version}")
-        click.echo(f"[lista-tools]: Version available: {available_version}")
+        click.echo(f"[lista-tools]: Installed version: {installed_version_str}")
+        click.echo(f"[lista-tools]: Version available: {available_version_str}")
         if click.confirm("[lista-tools]: Do you want to update?"):  # returns True if user confirms
             click.echo("[lista-tools]: Starting update. Please open lista-tools again after the update has finished.")
             # noinspection PyArgumentList
             os.startfile(bundle_dir / 'update.exe', arguments=str(str(FILE_DIR).encode().hex()))
             sys.exit()
 
-    return installed_version, installed_version_str
+    return installed_version, installed_version_str, available_version, available_version_str
 
 
 @click.group()
@@ -94,7 +97,8 @@ def version():
     if version_info is None:  # update() returns None if something went wrong
         click.echo(f"There was an error loading the local version file.")
     else:
-        click.echo(f"Version: {version_info[1]}")
+        click.echo(f"Installed version: {version_info[1]}")
+        click.echo(f"Newest version available: {version_info[3]}")
     click.echo("------------------------------")
 
 
