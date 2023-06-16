@@ -7,10 +7,8 @@ from pathlib import Path
 
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     # noinspection PyProtectedMember
-    bundle_dir = Path(sys._MEIPASS)
     FILE_DIR = Path(bytes.fromhex(sys.argv[1]).decode())
 else:
-    bundle_dir = Path(__file__).parent
     FILE_DIR = Path(__file__).parent
 
 BINARY_URL = r'https://github.com/stadtarchiv-lindau/lista-tools/raw/master/.pyinstaller/main/dist/lista-tools.exe'
