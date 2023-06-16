@@ -9,7 +9,7 @@ from prettytable import PrettyTable, DOUBLE_BORDER
 from packaging import version as pv
 from pathlib import Path
 
-WORKING_DIR = os.getcwd()
+WORKING_DIR = Path.cwd()
 VERSIONFILE_URL = r'https://raw.githubusercontent.com/stadtarchiv-lindau/lista-tools/master/VERSION'
 
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
@@ -166,30 +166,24 @@ def exdir(no_recursion):
     Will repeat this process until there are only files in the working directory, can be disabled with the '-R' flag
     """
     def extract():
-        for directory in os.listdir(WORKING_DIR):
-            # skips to next element if current one is a file
-            # if extract() is called by itself all files are already gone from the directory
-            if os.path.isfile(directory):
+        for directory in Path.iterdir(WORKING_DIR):
+            if Path.is_file(directory):
                 continue
-            path_to_directory = os.path.join(WORKING_DIR, directory)  # path to directory in WORKING_DIR
 
-            for element in os.listdir(directory):  # loops all elements inside first-level directory
-                path_to_element = os.path.join(path_to_directory, element)
-                new_name = f"{directory.upper()}_ {element}"  # adds prefix to name
-                new_path = os.path.join(path_to_directory, new_name)  # new_path is just the old path with new filename
-                os.rename(path_to_element, new_path)
-                shutil.move(new_path, WORKING_DIR)
-                click.echo(f"[lista-tools]: Moved: ./{directory}/{element} -> ./{new_name}")
+            for element in Path.iterdir(directory):
+                new_name = f"{directory.name.upper()}_ {element.name}"
+                (WORKING_DIR / directory / element).rename(WORKING_DIR / directory / new_name)
+                shutil.move(WORKING_DIR / directory / new_name, WORKING_DIR)
+                click.echo(f"[lista-tools]: Moved: ./{directory.name}/{element.name} -> ./{new_name}")
 
-            os.rmdir(path_to_directory)  # removes dir once it's empty
+            Path.rmdir(directory)
 
         if no_recursion:
             return
 
-        # calls itself again if there are still more directories to extract
-        for element in os.listdir(WORKING_DIR):
-            if os.path.isdir(element):
-                click.echo(f"[lista-tools]: Extracting directory: ./{element}")
+        for element in Path.iterdir(WORKING_DIR):
+            if Path.is_dir(element):
+                click.echo(f"[lista-tools]: Extracting directory: ./{element.name}")
                 extract()
                 break
 
@@ -217,15 +211,14 @@ def rename(source_dir, no_space):
             change_prefix = False
 
         table = PrettyTable(["ID", "Old filename", "New filename", "Type"])  # table to show before vs after
-        for idx, element in enumerate(os.listdir(source_dir), 1):  # uses idx as ID; starts at 1
-            path_to_element = os.path.join(source_dir, element)
+        for idx, element in enumerate(Path.iterdir(source_dir), 1):  # uses idx as ID; starts at 1
             if no_space:
-                new_name = f"{prefix}{element}"
+                new_name = f"{prefix}{element.name}"
             else:
-                new_name = f"{prefix} {element}"
+                new_name = f"{prefix} {element.name}"
 
-            element_type = get_element_type(path_to_element)
-            table.add_row([idx, element, new_name, element_type])
+            element_type = get_element_type(source_dir / element)
+            table.add_row([idx, element.name, new_name, element_type])
 
         table.align = "l"
         table.align["ID"] = "r"
@@ -248,16 +241,14 @@ def rename(source_dir, no_space):
                 click.echo(f"[lista-tools]: Aborting")
                 sys.exit()
 
-    for element in os.listdir(source_dir):
-        path_to_element = os.path.join(source_dir, element)
+    for element in Path.iterdir(source_dir):
         if no_space:
-            new_name = f"{prefix}{element}"
+            new_name = f"{prefix}{element.name}"
         else:
-            new_name = f"{prefix} {element}"
+            new_name = f"{prefix} {element.name}"
 
-        new_path = os.path.join(source_dir, new_name)
-        os.rename(path_to_element, new_path)
-        click.echo(f"[lista-tools]: Renamed: {element} -> {new_name}")
+        (source_dir / element).rename(source_dir / new_name)
+        click.echo(f"[lista-tools]: Renamed: {element.name} -> {new_name}")
 
 
 main.add_command(droid_csv)
