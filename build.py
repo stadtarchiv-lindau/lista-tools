@@ -1,8 +1,10 @@
+import shutil
 import sys
-# from datetime import datetime
 import PyInstaller.__main__
+from pathlib import Path
 
-# now = datetime.now().isoformat(timespec='seconds')  # legacy code from having build date
+dist = Path.cwd() / '.pyinstaller' / 'main' / 'dist' / 'lista-tools.exe'
+dev = Path(r'D:\lista-tools\lista-tools-dev.exe')
 
 try:
     with open('VERSION', 'r') as f:
@@ -56,3 +58,5 @@ PyInstaller.__main__.run([
 ])
 
 print(f"Application built with version number {new_version}")
+shutil.copy2(dist, dev)
+print(f"Copied lista-tools-dev.exe")

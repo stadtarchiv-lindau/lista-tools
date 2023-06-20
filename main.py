@@ -1,6 +1,7 @@
 import os
 import sys
 import shutil
+import re
 import csv
 import click
 import requests
@@ -28,14 +29,12 @@ def get_element_type(path):
     :param path: Path to element in filesystem
     :return: String of what the element is
     """
-    if os.path.isfile(path):
+    if Path.is_dir(path):
+        return "Directory"
+    elif Path.is_file(path):
         return "File"
-    elif os.path.isdir(path):
-        return "Folder"
-    elif os.path.islink(path):
+    elif Path.is_symlink(path):
         return "Symlink"
-    elif os.path.ismount(path):
-        return "Mount point"
     else:
         return "Other"
 
@@ -167,6 +166,8 @@ def exdir(no_recursion):
     """
     def extract():
         for directory in Path.iterdir(WORKING_DIR):
+            # files can be skipped, as on the first iteration they are already in WORKING_DIR and don't need to be moved
+            # and for all subsequent calls the previous iteration has already moved them
             if Path.is_file(directory):
                 continue
 
@@ -192,18 +193,13 @@ def exdir(no_recursion):
 
 
 @click.command()
-@click.argument('source_dir', required=False, type=click.Path(exists=True, file_okay=False))
 @click.option('-S', '--no-space', 'no_space', is_flag=True, default=False, help="Does not add a space after the prefix")
-def rename(source_dir, no_space):
+def rename(no_space):
     """
-    Renames all files and directories in SOURCE_DIR by adding a prefix to them.
-
-    If SOURCE_DIR is not passed, the working directory will be used.
+    Renames all files and directories in the working directory by adding a prefix to them.
     """
     change_prefix = True
     prefix = None
-    if source_dir is None:
-        source_dir = WORKING_DIR
 
     while True:
         if change_prefix:
@@ -211,13 +207,13 @@ def rename(source_dir, no_space):
             change_prefix = False
 
         table = PrettyTable(["ID", "Old filename", "New filename", "Type"])  # table to show before vs after
-        for idx, element in enumerate(Path.iterdir(source_dir), 1):  # uses idx as ID; starts at 1
+        for idx, element in enumerate(Path.iterdir(WORKING_DIR), 1):  # uses idx as ID; starts at 1
             if no_space:
                 new_name = f"{prefix}{element.name}"
             else:
                 new_name = f"{prefix} {element.name}"
 
-            element_type = get_element_type(source_dir / element)
+            element_type = get_element_type(WORKING_DIR / element)
             table.add_row([idx, element.name, new_name, element_type])
 
         table.align = "l"
@@ -241,21 +237,46 @@ def rename(source_dir, no_space):
                 click.echo(f"[lista-tools]: Aborting")
                 sys.exit()
 
-    for element in Path.iterdir(source_dir):
+    for element in Path.iterdir(WORKING_DIR):
         if no_space:
             new_name = f"{prefix}{element.name}"
         else:
             new_name = f"{prefix} {element.name}"
 
-        (source_dir / element).rename(source_dir / new_name)
+        (WORKING_DIR / element).rename(WORKING_DIR / new_name)
         click.echo(f"[lista-tools]: Renamed: {element.name} -> {new_name}")
+
+
+@click.command()
+def clean_filenames():
+    """
+    Cleans up filenames by substituting all non-alphanumerical characters with '_'
+    Also replaces the German Umlaute with their alphanumerical counterparts
+    """
+    substitutions = {
+        "ä": "ae",
+        "ö": "oe",
+        "ü": "ue",
+        "ß": "ss",
+        "Ä": "Ae",
+        "Ö": "Oe",
+        "Ü": "Ue",
+    }
+
+    for element in Path.iterdir(WORKING_DIR):
+        name = re.sub(r"[^a-zäöüßA-ZÄÖÜ0-9_-]", '_', element.stem)
+        for pattern, replacement in substitutions.items():
+            name = re.sub(pattern, replacement, name)
+
+        click.echo(f'[lista-tools]: ./{element.parent.stem}/{element.stem} -> ./{element.parent.stem}/{name}')
+        element.rename(element.with_stem(name))
 
 
 main.add_command(droid_csv)
 main.add_command(exdir)
 main.add_command(version)
 main.add_command(rename)
-
+main.add_command(clean_filenames)
 
 if __name__ == '__main__':
     version_info = update()  # checks for updates before running
