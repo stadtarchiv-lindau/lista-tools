@@ -11,7 +11,7 @@ from packaging import version as pv
 from pathlib import Path
 
 WORKING_DIR = Path.cwd()
-VERSIONFILE_URL = r'https://raw.githubusercontent.com/stadtarchiv-lindau/lista-tools/master/VERSION'
+VERSIONFILE_URL = r'https://github.com/stadtarchiv-lindau/lista-tools/releases/latest/download/lista-tools.exe'
 
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     # noinspection PyProtectedMember
@@ -225,12 +225,12 @@ def rename(no_space):
         user_choice = click.prompt("[Y] Yes, apply   [N] No, change the prefix   [S] Toggle --no-space  "
                                    "[C] Cancel").casefold()[0]
         match user_choice:
-            case "y":
+            case 'y':
                 break
-            case "n":
+            case 'n':
                 change_prefix = True
                 continue
-            case "s":
+            case 's':
                 no_space = not no_space
                 continue
             case _:

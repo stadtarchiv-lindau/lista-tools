@@ -1,3 +1,4 @@
+import hashlib
 import shutil
 import sys
 import PyInstaller.__main__
@@ -60,3 +61,7 @@ PyInstaller.__main__.run([
 print(f"Application built with version number {new_version}")
 shutil.copy2(dist, dev)
 print(f"Copied lista-tools-dev.exe")
+with open('SHA256', 'w') as hashfile:
+    with open(dist, 'rb') as distfile:
+        hashfile.write(hashlib.sha256(distfile.read()).hexdigest())
+print(f"Updated hashfile")
