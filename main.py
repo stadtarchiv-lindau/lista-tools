@@ -11,7 +11,7 @@ from packaging import version as pv
 from pathlib import Path
 
 WORKING_DIR = Path.cwd()
-VERSIONFILE_URL = r'https://github.com/stadtarchiv-lindau/lista-tools/releases/latest/download/lista-tools.exe'
+VERSIONFILE_URL = r'https://github.com/stadtarchiv-lindau/lista-tools/releases/latest/download/VERSION'
 
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     # noinspection PyProtectedMember
