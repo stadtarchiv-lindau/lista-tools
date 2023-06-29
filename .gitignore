@@ -1,5 +1,8 @@
 .idea/
-.pyinstaller/
+.pyinstaller/main/*.spec
+.pyinstaller/update/*.spec
+.pyinstaller/main/build
+.pyinstaller/update/build
 .vscode/
 test.py
 notes.txt
