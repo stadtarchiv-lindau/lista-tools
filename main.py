@@ -5,6 +5,7 @@ import re
 import csv
 import click
 import requests
+import subprocess
 import pandas as pd
 from prettytable import PrettyTable, DOUBLE_BORDER
 from packaging import version as pv
@@ -16,10 +17,16 @@ VERSIONFILE_URL = r'https://github.com/stadtarchiv-lindau/lista-tools/releases/l
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     # noinspection PyProtectedMember
     bundle_dir = Path(sys._MEIPASS)
-    FILE_DIR = Path(sys.executable).parent
+    executable_path = Path(sys.executable).parent
+    executable_name = Path(sys.executable).name
+    update_script = 'update.exe'
+    is_bundled = True
 else:
     bundle_dir = Path(__file__).parent
-    FILE_DIR = Path(__file__).parent
+    executable_path = Path(__file__).parent
+    executable_name = Path(__file__).name
+    update_script = 'update.py'
+    is_bundled = False
 
 
 def get_element_type(path):
@@ -39,47 +46,66 @@ def get_element_type(path):
         return "Other"
 
 
-def update():
-    """
-    Checks if newer version of the program exists
-    :return: (installed_version: packaging.version.Version, installed_version_str: str); None if an error occurs
-    """
+def get_version():
     try:
         with open(bundle_dir / 'VERSION') as versionfile:
             installed_version_str = versionfile.read()
             installed_version = pv.parse(installed_version_str)
-    except (FileNotFoundError, pv.InvalidVersion) as error:
-        click.echo(f"[lista-tools]: An exception occurred when reading the local config file.")
-        click.echo(f"{error}")
+    except FileNotFoundError as FNFE:
+        click.echo(f"[lista-tools]: An exception occurred when reading the local versionfile.")
+        click.echo(f"{FNFE}")
         installed_version = None
         installed_version_str = None
 
-    # noinspection PyBroadException
     try:
         r = requests.get(VERSIONFILE_URL)
         available_version_str = r.content.decode().strip()  # decodes bytes object to str
         available_version = pv.parse(available_version_str)
-
-    except Exception as E:  # KeyError if ConfigParser tries to read section of .ini that doesn't exist
+    except requests.RequestException as RE:
         click.echo(f"[lista-tools]: An Error occurred when fetching the newest version. ")
-        click.echo(f"{E}")
+        click.echo(f"{RE}")
         available_version = None
         available_version_str = None
 
-    if installed_version is None or available_version is None:
-        return installed_version, installed_version_str, available_version, available_version_str
+    return (installed_version, installed_version_str), (available_version, available_version_str)
+
+
+def update(forced):
+    try:
+        with open(bundle_dir / 'VERSION') as versionfile:
+            installed_version_str = versionfile.read()
+            installed_version = pv.parse(installed_version_str)
+    except FileNotFoundError as FNFE:
+        click.echo(f"[lista-tools]: An exception occurred when reading the local versionfile.")
+        click.echo(f"{FNFE}")
+        installed_version = None
+        installed_version_str = None
+
+    try:
+        r = requests.get(VERSIONFILE_URL)
+        available_version_str = r.content.decode().strip()  # decodes bytes object to str
+        available_version = pv.parse(available_version_str)
+    except requests.RequestException as RE:
+        click.echo(f"[lista-tools]: An Error occurred when fetching the newest version. ")
+        click.echo(f"{RE}")
+        available_version = None
+        available_version_str = None
 
     if installed_version < available_version:
         click.echo(f"[lista-tools]: A newer version is available.")
+
+    if (installed_version < available_version) or forced:
         click.echo(f"[lista-tools]: Installed version: {installed_version_str}")
         click.echo(f"[lista-tools]: Version available: {available_version_str}")
         if click.confirm("[lista-tools]: Do you want to update?"):  # returns True if user confirms
             click.echo("[lista-tools]: Starting update. Please open lista-tools again after the update has finished.")
-            # noinspection PyArgumentList
-            os.startfile(bundle_dir / 'update.exe', arguments=str(str(FILE_DIR).encode().hex()))
+            if is_bundled:
+                subprocess.Popen([bundle_dir / update_script, executable_path])
+            else:
+                subprocess.Popen(['python', bundle_dir / update_script, executable_path])
             sys.exit()
 
-    return installed_version, installed_version_str, available_version, available_version_str
+    return (installed_version, installed_version_str), (available_version, available_version_str)
 
 
 @click.group()
@@ -88,16 +114,31 @@ def main():
 
 
 @click.command()
+def force_update():
+    """
+    Forces an update, even if no newer version is available
+    """
+    update(forced=True)
+
+
+@click.command()
 def version():
     """
     Prints the currently installed version.
     """
+    installed_version_str = version_info[0][1]
+    available_version_str = version_info[1][1]
+
     click.echo("------------------------------")
-    if version_info is None:  # update() returns None if something went wrong
-        click.echo(f"There was an error loading the local version file.")
+    if installed_version_str is None:
+        click.echo(f"Installed version: Error getting installed version")
     else:
-        click.echo(f"Installed version: {version_info[1]}")
-        click.echo(f"Newest version available: {version_info[3]}")
+        click.echo(f"Installed version: {installed_version_str}")
+
+    if available_version_str is None:
+        click.echo(f"Newest version available: Error getting newest version")
+    else:
+        click.echo(f"Newest version available: {available_version_str}")
     click.echo("------------------------------")
 
 
@@ -123,6 +164,7 @@ def droid_csv(input, output, folders):
         # had some problems in the past with files having more data columns than headers, which causes the parser to not
         # work. current fix is to manually add more header columns. this mostly happens with csv's containing data on
         # ~$xxx.doc lock files generated by Microsoft products, as DROID recognizes them to have multiple file formats
+        # see .test/exdir_with_bug.csv
         except pd.errors.ParserError as pe:
             click.echo(f"[lista-tools]: An error occurred: {pe}")
             click.echo(f"[lista-tools]: This is most likely due to some rows having not enough header columns. "
@@ -277,7 +319,8 @@ main.add_command(exdir)
 main.add_command(version)
 main.add_command(rename)
 main.add_command(clean_filenames)
+main.add_command(force_update)
 
 if __name__ == '__main__':
-    version_info = update()  # checks for updates before running
+    version_info = update(forced=False)  # checks for updates before running
     main()
