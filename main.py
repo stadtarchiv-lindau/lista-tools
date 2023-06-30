@@ -203,8 +203,9 @@ def droid_csv(input, output, folders):
               "once")
 def exdir(no_recursion):
     """
-    Extracts all folders inside the working directory and adds the folder name as a prefix to its contents
-    Will repeat this process until there are only files in the working directory, can be disabled with the '-R' flag
+    Extracts all folders inside the working directory and adds the name of the parent folder as a prefix to extracted
+    element. This process is repeated until there are only files left in the working directory; can be disabled with
+    the '-R' flag.
     """
     def extract():
         for directory in Path.iterdir(WORKING_DIR):
