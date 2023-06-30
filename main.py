@@ -14,17 +14,16 @@ from pathlib import Path
 WORKING_DIR = Path.cwd()
 VERSIONFILE_URL = r'https://github.com/stadtarchiv-lindau/lista-tools/releases/latest/download/VERSION'
 
+
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     # noinspection PyProtectedMember
     bundle_dir = Path(sys._MEIPASS)
-    executable_path = Path(sys.executable).parent
-    executable_name = Path(sys.executable).name
+    executable = Path(sys.executable)
     update_script = 'update.exe'
     is_bundled = True
 else:
     bundle_dir = Path(__file__).parent
-    executable_path = Path(__file__).parent
-    executable_name = Path(__file__).name
+    executable = Path(__file__)
     update_script = 'update.py'
     is_bundled = False
 
@@ -44,30 +43,6 @@ def get_element_type(path):
         return "Symlink"
     else:
         return "Other"
-
-
-def get_version():
-    try:
-        with open(bundle_dir / 'VERSION') as versionfile:
-            installed_version_str = versionfile.read()
-            installed_version = pv.parse(installed_version_str)
-    except FileNotFoundError as FNFE:
-        click.echo(f"[lista-tools]: An exception occurred when reading the local versionfile.")
-        click.echo(f"{FNFE}")
-        installed_version = None
-        installed_version_str = None
-
-    try:
-        r = requests.get(VERSIONFILE_URL)
-        available_version_str = r.content.decode().strip()  # decodes bytes object to str
-        available_version = pv.parse(available_version_str)
-    except requests.RequestException as RE:
-        click.echo(f"[lista-tools]: An Error occurred when fetching the newest version. ")
-        click.echo(f"{RE}")
-        available_version = None
-        available_version_str = None
-
-    return (installed_version, installed_version_str), (available_version, available_version_str)
 
 
 def update(forced):
@@ -100,9 +75,9 @@ def update(forced):
         if click.confirm("[lista-tools]: Do you want to update?"):  # returns True if user confirms
             click.echo("[lista-tools]: Starting update. Please open lista-tools again after the update has finished.")
             if is_bundled:
-                subprocess.Popen([bundle_dir / update_script, executable_path])
+                subprocess.Popen([bundle_dir / update_script, executable])
             else:
-                subprocess.Popen(['python', bundle_dir / update_script, executable_path])
+                subprocess.Popen(['python', bundle_dir / update_script, executable])
             sys.exit()
 
     return (installed_version, installed_version_str), (available_version, available_version_str)

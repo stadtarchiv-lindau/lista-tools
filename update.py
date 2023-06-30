@@ -5,15 +5,9 @@ import requests
 import hashlib
 from pathlib import Path
 
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    # noinspection PyProtectedMember
-    try:
-        main_executable_path = Path(sys.argv[1])
-    except IndexError:
-        main_executable_path = Path(sys.executable).parent
-
-else:
-    main_executable_path = Path(__file__).parent
+executable = Path(sys.argv[1])
+executable_old = Path(f'{executable}.old')
+executable_new = Path(f'{executable}.new')
 
 BINARY_URL = r'https://github.com/stadtarchiv-lindau/lista-tools/releases/latest/download/lista-tools.exe'
 SHA256_URL = r'https://github.com/stadtarchiv-lindau/lista-tools/releases/latest/download/SHA256'
@@ -66,29 +60,64 @@ elif expected_hash != hashlib.sha256(downloaded_data).hexdigest():
         sys.exit()
 
 print(f"[lista-tools]: Hashes match. Writing data to file.")
-with open(main_executable_path / 'lista-tools.exe.new', 'wb') as downloadfile:
-    downloadfile.write(downloaded_data)
-
-print(f"[lista-tools]: Saved as lista-tools.exe.new")
-print(f"[lista-tools]: Renaming: lista-tools.exe -> lista-tools.exe.old")
 try:
-    (main_executable_path / 'lista-tools.exe').rename('lista-tools.exe.old')
-except OSError:
-    print(f"[lista-tools]: Error: lista-tools.exe not found. Saving downloaded file as lista-tools.exe")
-    (main_executable_path / 'lista-tools.exe.new').rename('lista-tools.exe')
-    input(f"[lista-tools]: Update complete. Press Enter to close this window.")
-    sys.exit()
+    if not executable_new.exists():
+        with open(executable_new, 'wb') as downloadfile:
+            downloadfile.write(downloaded_data)
+        print(f"[lista-tools]: Saved as {executable_new.name}")
+    else:
+        choice = input(f"[lista-tools]: {executable_new.name} exists. Do you want to overwrite? [y/N]")[0].casefold()
+        match choice:
+            case 'y':
+                with open(executable_new, 'wb') as downloadfile:
+                    downloadfile.write(downloaded_data)
+            case _:
+                print(f"[lista-tools]: Aborting update.")
+                sys.exit()
 
-time.sleep(1)
-print(f"[lista-tools]: Renaming: lista-tools.exe.new -> lista-tools.exe")
-try:
-    (main_executable_path / 'lista-tools.exe.new').rename('lista-tools.exe')
-    time.sleep(1)
-    print(f"[lista-tools]: Deleting lista-tools.exe.old")
-    os.remove(main_executable_path / 'lista-tools.exe.old')
+        print(f"[lista-tools]: Saved as {executable_new.name}")
 except OSError as OSE:
-    print(f"[lista-tools]: An error has occurred when installing. Please either rename the files manually or delete the"
-          f"temporary files and restart update. Press Enter to confirm.")
+    print(f"[lista-tools]: An error occurred when saving the temporary file. Please try again or manually download the "
+          f"newest version from GitHub and delete the temporary files.")
     print(OSE)
     sys.exit()
+
+try:
+    print(f"[lista-tools]: Renaming: {executable.name} -> {executable_old.name}")
+    if not executable_old.exists():
+        executable.rename(executable_old)
+    else:
+        choice = input(f"[lista-tools]: {executable_old.name} exists. Do you want to overwrite? [y/N]")[0].casefold()
+        match choice:
+            case 'y':
+                executable.rename(executable_old)
+            case _:
+                print(f"[lista-tools]: Aborting update.")
+                sys.exit()
+    time.sleep(1)
+except OSError as OSE:
+    print(f"[lista-tools]: An error occurred when renaming the temporary file. Please try again or manually download "
+          f"the newest version from GitHub and delete the temporary files.")
+    print(OSE)
+    sys.exit()
+
+try:
+    # no need to check if executable already exists because it would have been renamed earlier
+    print(f"[lista-tools]: Renaming: {executable_new.name} -> {executable.name}")
+    executable_new.rename(executable)
+    time.sleep(1)
+except OSError as OSE:
+    print(f"[lista-tools]: An error occurred when renaming the temporary file. Please try again or manually download "
+          f"the newest version from GitHub and delete the temporary files.")
+    print(OSE)
+    sys.exit()
+
+try:
+    print(f"[lista-tools]: Deleting {executable_old.name}")
+    os.remove(f'{executable_old}')
+except OSError as OSE:
+    print(f"[lista-tools]: An error occurred when removing the temporary file. Please try again or remove the file "
+          f"manually.")
+    print(OSE)
+
 print(f"[lista-tools]: Update complete. Please press Enter.")
