@@ -44,10 +44,10 @@ class ListaTools:
                             'noconfirm': noconfirm,
                             'target_dir': target_dir,
                             })
-        self.target_dir = self.params.get('target-dir')  # extracted to variable for cleaner code
-        self.print_debug(f"Logging: {logging}")
-        self.print_debug(f"Noconfirm: {noconfirm}")
-        self.print_debug(f"Target directory: {target_dir}")
+        self.target_dir = self.params.get('target_dir')  # extracted to variable for cleaner code
+        self.print_debug(f"Logging: {self.params.get('logging')}")
+        self.print_debug(f"Noconfirm: {self.params.get('noconfirm')}")
+        self.print_debug(f"Target directory: {self.params.get('target_dir')}")
 
     def update_check(self, force):
         """Checks if an update is available and calls ListaTools.update() if it is
@@ -107,16 +107,15 @@ class ListaTools:
             sys.exit()
 
     def confirm(self, text):
-        """Prints text and asks user to confirm, e.g. "Do you want to overwrite? [y/N] "
+        """Prints text and asks user to confirm, e.g. "Do you want to overwrite? [y/N]: "
 
         :param any text: The text to print before waiting for user to confirm
         :return bool: True if user confirmed, False if not
         """
         if self.params.get('noconfirm'):
             return True
-        self.print_info(f"{text} [y/N] ", end='')
+        self.print_info(f"{text} [y/N]: ", end='')
         choice = input()[0].casefold()
-        self.print_info("")
         match choice:
             case 'y':
                 return True
@@ -181,10 +180,13 @@ class ListaTools:
         if not self.confirm("Do you want to update?"):
             return
         self.print_info("Starting update. Please reopen lista-tools after the update has finished.")
+        passed_params = self.params
+        passed_params['target_dir'] = str(self.target_dir)
         if self.is_bundled:
-            subprocess.Popen([self.update_path, self.executable_path, self.params])
-        else:
-            subprocess.Popen(['python', self.update_path, self.executable_path, self.params])
+            self.print_debug(str(passed_params))
+            subprocess.Popen([self.update_path, self.executable_path, str(passed_params)])
+        # else:
+            # subprocess.Popen(['python', self.update_path, self.executable_path, str(self.params)])
 
         sys.exit()
 
@@ -316,6 +318,7 @@ class ListaTools:
         :return: N/A
         """
         def extract():
+            self.print_debug(f"Inside exdir: {self.target_dir}")
             for directory in Path.iterdir(self.target_dir):
                 remove_dir = True
                 # files can be skipped, as on the first iteration they are already in WORKING_DIR and don't need to be
@@ -349,7 +352,7 @@ class ListaTools:
     def rename(self, prefix):
         """See caller function documentation
 
-        :param prefix: The prefix to add
+        :param any prefix: The prefix to add
         :return: N/A
         """
         table = PrettyTable(["ID", "Old filename", "New filename", "Type"])
@@ -387,8 +390,8 @@ if __name__ == '__main__':
                   "even if no newer version is available")
     @click.option('-v', '--version', 'versionflag', is_flag=True, default=False, help="Prints information about the "
                   "current and available version")
-    @click.option('-d', '--debug', is_flag=True, default=False, help="Identical to '-l debug', implemented for nicer "
-                  "commands")
+    @click.option('-d', '--debug', is_flag=True, default=False, help="Functionally identical to '-l debug', but "
+                  "overwrites it. Implemented for nicer commands")
     def cli(logging, noconfirm, target_dir, updateflag, versionflag, debug):
         if debug is True:
             logging = 'debug'
@@ -399,29 +402,50 @@ if __name__ == '__main__':
 
     @cli.command()
     def clean_filenames():
+        """Cleans up filenames by substituting all non-alphanumerical characters with '_'.
+        Also replaces the German Umlaute with their alphanumerical counterparts (e.g. ä -> ae)
+        """
         ltt.clean_filenames()
 
     @cli.command()
     # paths are passed as str, since all checks are done in the function itself
     @click.argument('input')
-    @click.option('-o', '--output', default='output.csv')
+    @click.option('-o', '--output', default='output.csv', help="The name of the output file, defaults to 'output.csv'")
     # ' /-F' defines -F as alias for the --remove-folders
-    @click.option(' /-F', '--keep-folders/--remove-folders', 'remove_folders', default=False)
+    @click.option(' /-F', '--keep-folders/--remove-folders', 'remove_folders', default=False, help="Removes all rows "
+                  "containing information on folders, defaults to '--keep-folders'")
     def droid_csv(input, output, remove_folders):
+        """Formats a csv file made by DROID to fit in the LIStA Excel template
+
+        INPUT is the path to the input file
+        """
         ltt.droid_csv(input=input, output=output, remove_folders=remove_folders)
 
     @cli.command()
     # ' /-R' defines -R as alias for the --no-recursion
-    @click.option(' /-R', '--recursion/--no-recursion', 'recursion', default=True)
+    @click.option(' /-R', '--recursion/--no-recursion', 'recursion', default=True, help="Toggles recursive behaviour. "
+                  "If '--no-recursion' is passed, only the top layer of directories will be , defaults to "
+                  "'--recursion'")
     def exdir(recursion):
+        """Extracts all folders inside the target directory and adds the name of the parent folder as a prefix to the
+        extracted element. If recursion is turned on, this will repeat until there are only files left in the target
+        """
         ltt.exdir(recursion=recursion)
 
     @cli.command()
     @click.argument('prefix')
     def rename(prefix):
+        """Adds the passed prefix to all elements in the target directory
+
+        PREFIX is the prefix to add
+        """
         ltt.rename(prefix=prefix)
 
     # __init__ is run outside of cli() to avoid having to return ltt,
     # since params are only known after cli() runs
-    ltt = ListaTools()
-    cli()
+    try:
+        ltt = ListaTools()
+        cli()
+    except KeyboardInterrupt as KI:
+        print("Interrupted by user!")
+        sys.exit()

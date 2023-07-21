@@ -4,6 +4,7 @@ import requests
 import hashlib
 from pathlib import Path
 from ast import literal_eval
+from progress.bar import ChargingBar
 
 
 class Updater:
@@ -12,6 +13,7 @@ class Updater:
         self.exec_path_old = Path(f"{self.exec_path}.old")
         self.exec_path_new = Path(f"{self.exec_path}.new")
         self.params = literal_eval(sys.argv[2])  # literal_eval to convert str representation of a dict to a dict
+        self.params['target_dir'] = Path(self.params.get('target_dir'))
         self.binary_url = r'https://github.com/stadtarchiv-lindau/lista-tools/releases/latest/download/lista-tools.exe'
         self.sha256_url = r'https://github.com/stadtarchiv-lindau/lista-tools/releases/latest/download/SHA256'
         self.update()
@@ -83,17 +85,20 @@ class Updater:
         self.print_info(f"Download source: {self.binary_url}")
         try:
             r_binary = requests.get(self.binary_url, stream=True)
-            total_length = int(r_binary.headers.get('content-length'))
-            bytes_done = 0
+            # total_length = int(r_binary.headers.get('content-length'))
+            # bytes_done = 0
             response_list = []
+            bar = ChargingBar('Downloading', max=50)
             for chunk in r_binary.iter_content(chunk_size=4096):
-                bytes_done += len(chunk)
+                # bytes_done += len(chunk)
                 response_list.append(chunk)
-                p_bar_progress = int(50 * bytes_done / total_length)
-                p_bar_percentage = round((100 * bytes_done / total_length), 1)
-                print(f"\r[{'═' * p_bar_progress + ' ' * (50 - p_bar_progress)}] {p_bar_percentage}%", end='',
-                      flush=True)
-            print("")
+                bar.next()
+                # p_bar_progress = int(50 * bytes_done / total_length)
+                # p_bar_percentage = round((100 * bytes_done / total_length), 1)
+                # self.print_info(f"\r[{'═' * p_bar_progress + ' ' * (50 - p_bar_progress)}] {p_bar_percentage}%", end='',
+                #                 flush=True)
+            # self.print_info("")
+            bar.finish()
         except requests.RequestException as RE:
             self.report_error("An error occurred when downloading the latest binary", RE, abort=True)
 
@@ -131,7 +136,9 @@ class Updater:
             self.report_error("An error occurred when removing the temporary file. Please try again or remove the file "
                               "manually", OSE)
 
-        self.print_info("Update complete. Press Enter to exit", end='')
+        self.print_info("Update complete. Press Enter to exit", end='', flush=True)
+        self.print_info("")
+        sys.exit()
 
 
 if __name__ == '__main__':
