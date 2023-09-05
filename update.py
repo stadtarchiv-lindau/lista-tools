@@ -85,20 +85,17 @@ class Updater:
         self.print_info(f"Download source: {self.binary_url}")
         try:
             r_binary = requests.get(self.binary_url, stream=True)
-            # total_length = int(r_binary.headers.get('content-length'))
-            # bytes_done = 0
+            total_length = int(r_binary.headers.get('content-length'))
+            bytes_done = 0
             response_list = []
-            bar = ChargingBar('Downloading', max=50)
             for chunk in r_binary.iter_content(chunk_size=4096):
-                # bytes_done += len(chunk)
+                bytes_done += len(chunk)
                 response_list.append(chunk)
-                bar.next()
-                # p_bar_progress = int(50 * bytes_done / total_length)
-                # p_bar_percentage = round((100 * bytes_done / total_length), 1)
-                # self.print_info(f"\r[{'═' * p_bar_progress + ' ' * (50 - p_bar_progress)}] {p_bar_percentage}%", end='',
-                #                 flush=True)
-            # self.print_info("")
-            bar.finish()
+                p_bar_progress = int(50 * bytes_done / total_length)
+                p_bar_percentage = round((100 * bytes_done / total_length), 1)
+                self.print_info(f"\r[{'═' * p_bar_progress + ' ' * (50 - p_bar_progress)}] {p_bar_percentage}%", end='',
+                                flush=True)
+            self.print_info("")
         except requests.RequestException as RE:
             self.report_error("An error occurred when downloading the latest binary", RE, abort=True)
 

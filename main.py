@@ -38,7 +38,6 @@ class ListaTools:
         :param str logging: Verbosity of script; can be one of [debug | full | warn | error | none]
         :param bool noconfirm: Skips all confirmation prompts to allow script to be run without any user input
         :param pathlib.Path target_dir: The directory the script will be working in, defaults to working directory
-        :return: N/A
         """
         self.params.update({'logging': logging,
                             'noconfirm': noconfirm,
@@ -53,7 +52,6 @@ class ListaTools:
         """Checks if an update is available and calls ListaTools.update() if it is
 
         :param bool force: Always opens update dialogue
-        :return: N/A
         """
         if force:
             self.print_info("Forcing update")
@@ -66,7 +64,6 @@ class ListaTools:
         """Prints text if logging level is 'debug'
 
         :param any text: What to print
-        :return: N/A
         """
         if self.params.get('logging') in 'debug':
             print(f"DEBUG: {text}")
@@ -77,7 +74,6 @@ class ListaTools:
         :param any text: What to print
         :param str end: passed to print()
         :param bool flush: passed to print()
-        :return: N/A
         """
         if self.params.get('logging') in ('debug', 'full'):
             print(text, end=end, flush=flush)
@@ -86,7 +82,6 @@ class ListaTools:
         """Prints text if logging level is one of [debug | full | warn]
 
         :param any text: What to print
-        :return: N/A
         """
         if self.params.get('logging') in ('debug', 'full', 'warn'):
             print(f"WARNING: {text}")
@@ -98,7 +93,6 @@ class ListaTools:
         :param any text: What to print
         :param BaseException error: The error to print
         :param bool abort: Whether to exit after printing
-        :return: N/A
         """
         if self.params.get('logging') in ('debug', 'full', 'warn', 'error'):
             print(f"ERROR: {text}")
@@ -125,7 +119,6 @@ class ListaTools:
     def abort(self):
         """Prints abort message and stops execution
 
-        :return: N/A
         """
         self.print_info("Aborting!")
         sys.exit()
@@ -169,6 +162,42 @@ class ListaTools:
                 return False
         except version.InvalidVersion:
             pass
+
+    def _rename_files(self, changes):
+        """Lists changes in changes and asks for user confirmation, then renames them
+
+        :param list[tuple] changes:
+        """
+        # table.add_row([idx, element.name, new_stem + element.suffix, self.get_element_type(element)])
+        # changes.append((idx, element, element.with_stem(new_stem), self.get_element_type(element)))
+        # table = PrettyTable(["ID", "Old filename", "New filename", "Type"])
+        table = PrettyTable(["ID", "Old filename", "New filename", "Type"])
+        for tup in changes:
+            idx, element, new_element, element_type = tup
+            table.add_row([idx, element.name, new_element.name, element_type])
+        table.align = 'l'
+        table.align['ID'] = 'r'
+        table.set_style(DOUBLE_BORDER)
+        self.print_info(table)
+        if not self.confirm("Do you want to apply these changes?"):
+            self.abort()
+        try:
+            self.print_info(f"Renaming: 0/{len(changes)}", end='', flush=True)
+            for n, tup in enumerate(changes, 1):
+                _, src, dst, _ = tup
+                self.print_debug(tup)
+                self.print_info(f"\rRenaming: {n}/{len(changes)}", end='', flush=True)
+                if src == dst:
+                    self.print_debug("Already the same name, skipping")
+                    continue
+                try:
+                    src.rename(dst)
+                except OSError as OSE:
+                    self.report_error(f"An error occurred when renaming file number {n}. Skipping", OSE)
+                    continue
+            self.print_info("")
+        except OSError as OSE:
+            self.report_error("An error occurred when renaming the files", OSE)
 
     def update(self):
         """Confirms if user wants to update, and calls update script if that is the case
@@ -224,35 +253,15 @@ class ListaTools:
             "Ö": "Oe",
             "Ü": "Ue",
         }
-        table = PrettyTable(['ID', 'Original filename', 'Cleaned filename', 'Type'])
         changes = []
-        for idx, element in enumerate(Path.iterdir(self.params.get('target_dir')), 1):
+        for idx, element_relative in enumerate(Path.iterdir(self.target_dir), 1):
+            element = element_relative.resolve()
             new_stem = re.sub(r"[^a-zäöüßA-ZÄÖÜ0-9_-]", '_', element.stem)
             for pattern, replacement in substitutions.items():
                 new_stem = re.sub(pattern, replacement, new_stem)
-            changes.append((element, element.with_stem(new_stem)))
-            table.add_row([idx, element.name, new_stem + element.suffix, self.get_element_type(element)])
+            changes.append((idx, element, element.with_stem(new_stem), self.get_element_type(element)))
 
-        table.align = 'l'
-        table.align['ID'] = 'r'
-        table.set_style(DOUBLE_BORDER)
-        self.print_info(table)
-        if self.confirm("Do you want to apply the changes?"):
-            try:
-                self.print_info(f"Renaming: 0/{len(changes)}", end='', flush=True)
-                for n, tup in enumerate(changes, 1):
-                    src, dst = tup
-                    self.print_info(f"\rRenaming: {n}/{len(changes)}", end='', flush=True)
-                    if src == dst:
-                        continue
-                    try:
-                        src.rename(dst)
-                    except OSError as OSE:
-                        self.report_error("An error occurred when renaming one of the files. Continuing", OSE)
-                        continue
-                self.print_info("")
-            except OSError as OSE:
-                self.report_error("An error occurred when renaming the files", OSE)
+        self._rename_files(changes)
 
     def droid_csv(self, input, output, remove_folders):
         """See caller function documentation
@@ -260,7 +269,6 @@ class ListaTools:
         :param str | pathlib.Path input: Name of input file or path to it
         :param str | pathlib.Path output: Name of input file or path to it
         :param bool remove_folders: Whether to remove folders
-        :return: N/A
         """
         src = Path(input)
         if not src.is_absolute():
@@ -315,7 +323,6 @@ class ListaTools:
         """See caller function documentation
 
         :param bool recursion: Toggles recursive behaviour
-        :return: N/A
         """
         def extract():
             self.print_debug(f"Inside exdir: {self.target_dir}")
@@ -329,7 +336,7 @@ class ListaTools:
                     dst = self.target_dir / f"{directory.name.upper()}_ {element.name}"
                     try:
                         element.rename(dst)
-                        self.print_info(f"Moved: ./{directory.name}/{element.name} -> ./{dst.name}")
+                        self.print_info(f"Moved: ./{directory.name}/{element.name} → ./{dst.name}")
                     except OSError as OSE:
                         self.report_error("An error occurred when moving the files", OSE)
                         remove_dir = False  # won't remove parent if moving failed on child
@@ -353,26 +360,14 @@ class ListaTools:
         """See caller function documentation
 
         :param any prefix: The prefix to add
-        :return: N/A
         """
-        table = PrettyTable(["ID", "Old filename", "New filename", "Type"])
-        for idx, element in enumerate(Path.iterdir(self.target_dir), 1):  # uses idx as ID; starts at 1
+        changes = []
+        for idx, element_rel in enumerate(Path.iterdir(self.target_dir), 1):  # uses idx as ID; starts at 1
+            element = element_rel.resolve()
             new_name = f"{prefix}{element.name}"
-            element_type = self.get_element_type(element)
-            table.add_row([idx, element.name, new_name, element_type])
+            changes.append((idx, element, element.with_name(new_name), self.get_element_type(element)))
 
-        table.align = 'l'
-        table.align['ID'] = 'r'
-        table.set_style(DOUBLE_BORDER)
-        self.print_info(table)
-        if not self.confirm("Do you want to apply these changes?"):
-            self.abort()
-
-        for element in Path.iterdir(self.target_dir):
-            element.rename(f"{prefix}{element.name}")
-            self.print_info(f"Renamed: {element.name} -> {prefix}{element.name}")
-
-# 'logging': none | error | warn | full | debug
+        self._rename_files(changes)
 
 
 if __name__ == '__main__':
@@ -382,7 +377,7 @@ if __name__ == '__main__':
                   "nothing, 'error' only errors, 'warn' warnings and errors, 'full' prints everything, 'debug' prints "
                   "additional debug info. When using 'none', 'error' or 'warn' be sure to also use --noconfirm to avoid"
                   " issues with being asked for confirmation")
-    @click.option('-y', '--noconfirm', is_flag=True, default=False, help="Automatically confirms all prompts for you")
+    @click.option('-y', '--noconfirm', is_flag=True, default=False, help="Automatically confirms all prompts")
     @click.option('--target-dir', type=click.Path(exists=True, file_okay=False, writable=True, resolve_path=True,
                   path_type=Path), default=Path.cwd(), help="The directory that the commands will be executed in. If "
                   "the option is not passed, the directory in which you opened the script will be used")
@@ -390,8 +385,8 @@ if __name__ == '__main__':
                   "even if no newer version is available")
     @click.option('-v', '--version', 'versionflag', is_flag=True, default=False, help="Prints information about the "
                   "current and available version")
-    @click.option('-d', '--debug', is_flag=True, default=False, help="Functionally identical to '-l debug', but "
-                  "overwrites it. Implemented for nicer commands")
+    @click.option('-d', '--debug', is_flag=True, default=False, help="Functionally identical to '-l debug'."
+                                                                     " Implemented for nicer commands. Overrides '-l'")
     def cli(logging, noconfirm, target_dir, updateflag, versionflag, debug):
         if debug is True:
             logging = 'debug'
@@ -402,8 +397,8 @@ if __name__ == '__main__':
 
     @cli.command()
     def clean_filenames():
-        """Cleans up filenames by substituting all non-alphanumerical characters with '_'.
-        Also replaces the German Umlaute with their alphanumerical counterparts (e.g. ä -> ae)
+        """Cleans up filenames by substituting all non-alphanumerical characters with underscores.
+        Also replaces the German Umlaute with their alphanumerical counterparts (e.g. ä → ae)
         """
         ltt.clean_filenames()
 
@@ -429,6 +424,7 @@ if __name__ == '__main__':
     def exdir(recursion):
         """Extracts all folders inside the target directory and adds the name of the parent folder as a prefix to the
         extracted element. If recursion is turned on, this will repeat until there are only files left in the target
+        directory
         """
         ltt.exdir(recursion=recursion)
 
