@@ -16,7 +16,7 @@ To install lista-tools, simply download the executable and move it to the locati
 ```
 lista-tools --options [COMMAND] [ARGUMENTS] --options
 ```
-The options passed before the command change the behaviour of the entire program, while the ones at the end only relate to that specific command. 
+The general options passed before the command change the behaviour of the entire program, while the ones at the end only relate to that specific command. 
 
 To get help in the command line pass the option `--help` without any arguments to get general help or after an argument to get help with that specific command.
 
@@ -48,7 +48,7 @@ To get help in the command line pass the option `--help` without any arguments t
 ## clean-filenames
 #### Usage:
 ```
-lista-tools clean-filenames
+lista-tools clean-filenames [OPTIONS]
 ```
 Cleans up filenames by substituting all non-alphanumerical characters with underscores. Also replaces the German Umlaute with their alphanumerical counterparts (e.g. `ä → ae`).
 
@@ -133,6 +133,6 @@ exdir/                        exdir/
 ## rename
 #### Usage:
 ```
-lista-tools rename [OPTIONS]
+lista-tools rename [OPTIONS] PREFIX
 ```
 Adds the passed prefix to all elements in the target directory.
