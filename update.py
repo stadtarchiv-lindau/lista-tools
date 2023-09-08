@@ -4,7 +4,6 @@ import requests
 import hashlib
 from pathlib import Path
 from ast import literal_eval
-from progress.bar import ChargingBar
 
 
 class Updater:
